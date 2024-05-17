@@ -15,14 +15,14 @@ void LCD_SetAddress(uint8_t PageAddr, uint8_t ColumnAddr);
 void UART0_Config(void);
 void UART02_IRQHandler(void);
 void EINT1_Config(void);
+void EINT1_IRQHandler(void);
 
 void displayWelcomeScreen(void);
 void displayMapLoadedScreen(void);
 void displayGameField(void);
 
 volatile unsigned char loadedMap[8][8];
-volatile char ReceivedByte;
-volatile int dataReceive = 0;
+volatile int byteCount = 0;
 volatile int isMapReady = 0;
 volatile int gameCheck = OFF;
 
@@ -136,9 +136,8 @@ void UART0_Config(void) {
 }
 
 void UART02_IRQHandler(void) {
-    static int byteCount = 0;
     if (UART0->ISR & 1 << 0) {
-        ReceivedByte = UART0->DATA;
+        char ReceivedByte = UART0->DATA;
         int row = byteCount / 8;
         int col = byteCount % 8;
         loadedMap[row][col] = ReceivedByte - '0';
