@@ -1,334 +1,617 @@
+//------------------------------------------- main.c CODE STARTS ---------------------------------------------------------------------------
 #include <stdio.h>
+#include <string.h>
+#include <stdbool.h>
 #include "NUC100Series.h"
 #include "LCD.h"
 
 #define HXT_STATUS 1<<0
 #define PLL_STATUS 1<<2
-#define TIMER1_COUNTS 200000 -1 // generating 0.5hz on timer 1
-#define TIMER0_COUNTS 20 -1 // generating 50 Hz on timer 0
-
-#define ON 1
-#define OFF 0
-#define WIN 2
-#define LOSE 3
-#define RESET 4
-
-#define DEBOUNCE_DELAY 200000
-#define CHANGE_MODE_KEY 9
-#define LED_INDICATOR_PIN 15
+#define LIRC_STATUS 1<<3  // 10 kHz
+//Macro define when there are keys shoted in each column
+#define C3_pressed (!(PA->PIN & (1<<0)))
+#define C2_pressed (!(PA->PIN & (1<<1)))
+#define C1_pressed (!(PA->PIN & (1<<2)))
+#define TMR0_COUNT 100 - 1
 
 void System_Config(void);
+void Clock_Config(void);
+void GPIO_Config(void);
 void SPI3_Config(void);
-void timer1_config(void);
-void timer0_config(void);
 
-void InitializeLCD(void);
-void SendLCDCommand(unsigned char temp);
-void SendLCDData(unsigned char temp);
-void clearLCD(void);
-void SetLCDAddress(uint8_t PageAddr, uint8_t ColumnAddr);
-
-
-uint8_t ScanKeyPad(void);
-void EnableKeyPad(void);
-
-//display system config
-void seven_segment_config(void);
-void displayNumberOfShot(int state);
-void displayCol(void);
-void displayRow(void);
-
-// UART function and config
 void UART0_Config(void);
+char UART0_GetChar(void);
 void UART02_IRQHandler(void);
+void TMR0_IRQHandler(void);
 
-//menu function
-void WelcomeMenueDisplay(void);
 
-// map function
-void loadMap(void);
-void displayMap(void);
-void reset (void);
 
-//coordinate sytem config
-void aimShip(void);
+void LCD_start(void);
+void LCD_command(unsigned char temp);
+void LCD_data(unsigned char temp);
+void LCD_clear(void);
+void LCD_SetAddress(uint8_t PageAddr, uint8_t ColumnAddr);
 
-//shoot button config
-void EINT1_Config(void);
-void shootTheShip(void);
-
-//declare variables
-
-volatile int seg[] = {
+//Gloabl Array to display on 7segment for NUC140 MCU
+int displayNum[] = {
   0b10000010,  //Number 0          // ---a----
-	0b11101110,  //Number 1          // |      |
-	0b00000111,  //Number 2          // f      b
-	0b01000110,  //Number 3          // |      |
-	0b01101010,  //Number 4          // ---g----
-	0b01010010,  //Number 5          // |      |
-	0b00010010,  //Number 6          // e      c
-	0b11100110,  //Number 7          // |      |
-	0b00000010,  //Number 8          // ---d----
-	0b01000010,  //Number 9
-	0b11111111,   //Blank LED
+  0b11101110,  //Number 1          // |      |
+  0b00000111,  //Number 2          // f      b
+  0b01000110,  //Number 3          // |      |
+  0b01101010,  //Number 4          // ---g----
+  0b01010010,  //Number 5          // |      |
+  0b00010010,  //Number 6          // e      c
+  0b11100110,  //Number 7          // |      |
+  0b00000010,  //Number 8          // ---d----
+  0b01000010,  //Number 9
+  0b11111111   //Blank LED 
 };
 
-// display 7 segments variables
-volatile int scanLED = 0;                                   // scan between leds
-volatile int col_temp = 0;
-// reading map from text file variable
-/*volatile char map[150] = {0x30, 0x20, 0x30, 0x20, 0x30, 0x20, 0x30, 0x20, 0x30, 0x20, 0x30, 0x20, 0x30, 0x20, 0x30, 0x0A, 
-												 0x30, 0x20, 0x31, 0x20, 0x31, 0x20, 0x30, 0x20, 0x30, 0x20, 0x30, 0x20, 0x30, 0x20, 0x30, 0x0A, 
-												 0x30, 0x20, 0x30, 0x20, 0x30, 0x20, 0x30, 0x20, 0x30, 0x20, 0x30, 0x20, 0x31, 0x20, 0x30, 0x0A, 
-												 0x30, 0x20, 0x30, 0x20, 0x30, 0x20, 0x30, 0x20, 0x30, 0x20, 0x30, 0x20, 0x31, 0x20, 0x30, 0x0A, 
-												 0x30, 0x20, 0x30, 0x20, 0x31, 0x20, 0x31, 0x20, 0x30, 0x20, 0x30, 0x20, 0x30, 0x20, 0x30, 0x0A, 
-												 0x30, 0x20, 0x30, 0x20, 0x30, 0x20, 0x30, 0x20, 0x30, 0x20, 0x30, 0x20, 0x30, 0x20, 0x30, 0x0A,
-												 0x31, 0x20, 0x31, 0x20, 0x30, 0x20, 0x30, 0x20, 0x31, 0x20, 0x30, 0x20, 0x30, 0x20, 0x30, 0x0A,
-												 0x30, 0x20, 0x30, 0x20, 0x30, 0x20, 0x30, 0x20, 0x31, 0x20, 0x30, 0x20, 0x30, 0x20, 0x30, 0x0A};*/
+volatile int mapY = 0;
+volatile int mapX = 0;
 
-volatile char map[80];
-volatile unsigned char loadedMap[9][9];
-volatile int dataReceive = 0;
-volatile char ReceivedByte;
-volatile int isMapReady = 0;
-// shooting variables
-volatile int totalShot = 0;
-volatile int numofshipsdefeated = 0;
-volatile int isShoot = 0;
-volatile int isHit = 0;
-volatile int countBlink = 0;
-volatile int buzzer_count = 0;
-volatile int isGameInit = 0;
-volatile int numberOfHitShot = 0;
-volatile int totalX = 0;
+volatile int cleanLCD = 0;
+volatile int state = 0;
 
-volatile int isGameOver = 0;
-volatile int playAgainDisplay = 0;
-volatile int timerCounter = 0; // Global counter for timing
+volatile int digit = 0;
+volatile bool isY = false;
+volatile int x = 1;
+volatile int y = 1;
+volatile int shot = 0;
+volatile int hit = 0;
 
+volatile int isBuzzerOn = 0;
 
-// coordinating variables
-volatile int isColSelected = 0;
-volatile char mapElementState = '-';
+volatile int map[8][8];
+volatile int view[8][8] = {
+	{0, 0, 0, 0, 0, 0, 0, 0},
+	{0, 0, 0, 0, 0, 0, 0, 0},
+	{0, 0, 0, 0, 0, 0, 0, 0},
+	{0, 0, 0, 0, 0, 0, 0, 0},
+	{0, 0, 0, 0, 0, 0, 0, 0},
+	{0, 0, 0, 0, 0, 0, 0, 0},
+	{0, 0, 0, 0, 0, 0, 0, 0},
+	{0, 0, 0, 0, 0, 0, 0, 0}	
+};
 
-
-// Structure
-typedef struct Player // store the coordinate of player
-{
-	volatile int playerCol;
-	volatile int playerRow;
-} Player;
-
-typedef struct Ship { // create ship
-  volatile int pt1Col;
-  volatile int pt1Row;
-  volatile int pt2Col;
-  volatile int pt2Row;
-  volatile uint8_t pt1Shot;
-  volatile uint8_t pt2Shot;
-} Ship;
-volatile Ship shipList[5];
-volatile Player PlayerPosition;
-
-
-volatile int gameCheck;
-
-int main(void)
-{
-	System_Config();
-
-	SPI3_Config();
-	InitializeLCD();
-	clearLCD();
-	EnableKeyPad();
-	UART0_Config();
-	seven_segment_config();
-	EINT1_Config();
-	timer1_config();
-	timer0_config();
-	PlayerPosition.playerCol = 1;
-	PlayerPosition.playerRow = 1;
-	GPIO_SetMode(PC,BIT12,GPIO_MODE_OUTPUT);//hiting led
-	GPIO_SetMode(PC,BIT15,GPIO_MODE_OUTPUT);//xy coordinating led
-  GPIO_SetMode(PB,BIT11,GPIO_MODE_OUTPUT);//buzzer config
-	
-	WelcomeMenueDisplay();
-	
-	while (1) {
-		switch(gameCheck)
-{
-    case OFF:
-        // just to display
-				
-        break;
-
-    case ON:
-        if(isGameInit == 0)
-        {
-        
-            clearLCD();
-            displayMap();
-            isGameInit = 1;
-        }
-        displayNumberOfShot(1); // initially shot is 0 bcz total shot is 0
-        aimShip();
-        break;
-
-    case RESET:
-				reset ();
-        break;
-
-    default:
-        // Optionally handle any unexpected cases
-        break;
-}
+void printMap (void) {
+	for (int row = 0; row < 8; row++) {
+		for (int col = 0; col < 8; col++) {
+			if (view[row][col] == 0) {
+					printC_5x7(row*16, col*8, '-');
+			} else if (view[row][col] == 1) {
+					printC_5x7(row*16, col*8, 'x');
+			}
+		}
 	}
 }
 
-void System_Config(void) {
+// reset map to the original setting
+void reset() {
+	for (int row = 0; row < 8; row++) {
+		for (int col = 0; col < 8; col++) {
+			view[row][col] = 0;
+		}
+	}
+	isY = false;
+	shot = 0;
+	hit = 0;
+}
+
+// keypad pressed button value setting
+void setInputValue(int value) {
+  if (!isY) {
+    if (value == 9) {
+			// if K9 is pressed, set to Y-coordinate setting
+      isY = true;
+    } else {
+			// Assign value to X-coordinate
+      x = value;
+    }
+  } else {
+    if (value == 9) {
+			// if K9 is pressed, set to X-coordinate setting
+      isY = false;
+    } else {
+			// Assign value to Y-coordinate
+      y = value;
+    }
+  }
+}
+
+static void search_col1(void) {
+    // Drive ROW1 output pin as LOW. Other ROW pins as HIGH
+    PA->DOUT &= ~(1<<3);
+    PA->DOUT |= (1<<4);
+    PA->DOUT |= (1<<5);
+    if (C1_pressed) {
+        setInputValue(1);
+        return;
+    } else {
+    // Drive ROW2 output pin as LOW. Other ROW pins as HIGH
+        PA->DOUT |= (1<<3);
+        PA->DOUT &= ~(1<<4);
+        PA->DOUT |= (1<<5);
+    if (C1_pressed) {
+        // If column1 is LOW, detect key press as K4 (KEY 4)
+        setInputValue(4);
+        return;
+    } else{   
+    // Drive ROW3 output pin as LOW. Other ROW pins as HIGH
+        PA->DOUT |= (1<<3);
+        PA->DOUT |= (1<<4);
+        PA->DOUT &= ~(1<<5);
+				if (C1_pressed) {
+					// If column1 is LOW, detect key press as K7 (KEY 7)
+					setInputValue(7);
+					return;
+				} else
+					return;
+			}
+    }
+}
+
+static void search_col2(void) {
+    // Drive ROW1 output pin as LOW. Other ROW pins as HIGH
+    PA->DOUT &= ~(1<<3);
+    PA->DOUT |= (1<<4);
+    PA->DOUT |= (1<<5);
+    if (C2_pressed) {
+			// If column2 is LOW, detect key press as K2 (KEY 2)
+			setInputValue(2);
+			return;
+    } else {
+    // Drive ROW2 output pin as LOW. Other ROW pins as HIGH
+        PA->DOUT |= (1<<3);
+        PA->DOUT &= ~(1<<4);
+        PA->DOUT |= (1<<5);
+    if (C2_pressed) {
+			// If column2 is LOW, detect key press as K5 (KEY 5)
+			setInputValue(5);
+			return;
+    } else {
+    // Drive ROW3 output pin as LOW. Other ROW pins as HIGH
+			PA->DOUT |= (1<<3);
+			PA->DOUT |= (1<<4);
+			PA->DOUT &= ~(1<<5);
+    if (C2_pressed) {
+			// If column3 is LOW, detect key press as K8 (KEY 8)
+			setInputValue(8);
+			return;
+    } else
+			return;
+    }
+	}
+}
+
+static void search_col3(void) {
+    // Drive ROW1 output pin as LOW. Other ROW pins as HIGH
+		PA->DOUT &= ~(1<<3);
+		PA->DOUT |= (1<<4);
+		PA->DOUT |= (1<<5);
+ 
+    if (C3_pressed) {
+			// If column3 is LOW, detect key press as K3 (KEY 3)
+			setInputValue(3);
+			return;
+    } else {
+    // Drive ROW2 output pin as LOW. Other ROW pins as HIGH
+			PA->DOUT |= (1<<3);
+			PA->DOUT &= ~(1<<4);
+			PA->DOUT |= (1<<5);
+    if (C3_pressed) {
+			// If column3 is LOW, detect key press as K6 (KEY 6)
+			setInputValue(6);
+			return;
+    } else {
+    // Drive ROW3 output pin as LOW. Other ROW pins as HIGH
+			PA->DOUT |= (1<<3);
+			PA->DOUT |= (1<<4);
+			PA->DOUT &= ~(1<<5);
+    if (C3_pressed) {
+			// If column3 is LOW, detect key press as K9 (KEY 9)
+			setInputValue(9);
+			return;
+    } else
+			return;
+    }
+	}
+}
+
+void keyPad_pressed(void) {
+  //Turn all Rows to LOW 
+  PA->DOUT &= ~(1<<3);
+  PA->DOUT &= ~(1<<4);
+  PA->DOUT &= ~(1<<5);
+  // Check for key shot in key matrix
+	if(C1_pressed) {
+		search_col1();
+	} else if(C2_pressed) {
+		search_col2();
+	} else if(C3_pressed) {
+		search_col3();
+	}
+}
+
+void Keypad_Setup(void) {
+  PA->PMD &= (~(0b11<< 6));
+  PA->PMD |= (0b01 << 6);    
+  PA->PMD &= (~(0b11<< 8));
+  PA->PMD |= (0b01 << 8);  		
+  PA->PMD &= (~(0b11<< 10));
+  PA->PMD |= (0b01 << 10);
+}
+
+void LED_Setup(void) {
+  //Configure GPIO for 7segment, Set mode for PC4 to PC7
+  PC->PMD &= (~(0xFF<< 8));		    //Clear PMD[15:8] 
+  PC->PMD |= (0b01010101 << 8);   //Set output push-pull for PC4 to PC7
+}
+
+// Display a digit function
+void digitNumber(int digit, int num){
+  // Close all 4 digits 
+  PC->DOUT &= ~(1<<4);		//SC1
+  PC->DOUT &= ~(1<<5);		//SC2
+  PC->DOUT &= ~(1<<6);		//SC3
+  PC->DOUT &= ~(1<<7);    //SC4
+
+  //Logic 1 to turn on the requested digit
+  if (digit == 3) {PC->DOUT |= (1<<4);}
+  else if (digit == 2) {PC->DOUT |= (1<<5);}
+  else if (digit == 1) {PC->DOUT |= (1<<6);}
+  else if (digit == 0) {PC->DOUT |= (1<<7);}
+  
+  PE->DOUT = displayNum[num];
+  CLK_SysTickDelay(200); // Software debouncing
+  PE->DOUT = displayNum[10];
+}
+
+// Set value to 7-segment digits
+void displayDigit() {
+  if (digit == 0 && !isY) {digitNumber(digit, x);}
+  else if (digit == 1 && isY) {digitNumber(digit, y);}
+  else if (digit == 2) {digitNumber(digit, shot/10);}
+  else if (digit == 3) {digitNumber(digit, shot%10);}
+}
+
+int main(void) {
+
+	//System initialization
 	SYS_UnlockReg(); // Unlock protected registers
-	CLK->PWRCON |= (0x01 << 0);
-	while (!(CLK->CLKSTATUS & (1 << 0)));
 
-	//PLL configuration starts
-	CLK->PLLCON &= ~(1 << 19); //0: PLL input is HXT
-	CLK->PLLCON &= ~(1 << 16); //PLL in normal mode
-	CLK->PLLCON &= (~(0x01FF << 0));
-	CLK->PLLCON |= 48;
-	CLK->PLLCON &= ~(1 << 18); //0: enable PLLOUT
-	while (!(CLK->CLKSTATUS & (0x01ul << 2)));
-	//PLL configuration ends
+	System_Config();
+	Clock_Config();
 
-	//clock source selection
+	GPIO_Config();
+	Keypad_Setup();
+	UART0_Config();
+
+	SYS_LockReg();  // Lock protected registers
+	
+	//SPI3 initialization
+	SPI3_Config();
+
+	//LCD initialization
+	LCD_start();
+	LCD_clear();
+
+	while (1) {
+		if (cleanLCD) {
+				LCD_clear();
+				cleanLCD = 0;
+		}
+		
+		switch (state) {
+		case 0: // Welcome State
+		printS_5x7(10, 10, "Welcome to Battleship");
+		printS_5x7(25, 35, "Please load map");
+		printS_5x7(25, 60, "Team 8");
+
+			break;
+		case 1: // State Uploading Map Finish
+		printS_5x7(35, 10, "Battleship");
+		printS_5x7(5, 30, "Map Loaded Successfully");
+		printS_5x7(5, 40, "Push button SW_INT1");
+		printS_5x7(5, 50, "to start the game!");
+
+			break;
+		case 2: // Game State
+			// Reset buzzer
+			isBuzzerOn = 0;
+		
+			// Start displaying 7seg
+			TIMER0->TCSR |= (0x01 << 30);
+		
+			printMap();
+			break;
+		case 3: // Game Over State
+			// Turn off Timer0
+			TIMER0->TCSR &= ~(0x01 << 30);
+			TIMER0->TCSR |= (1 << 26);
+		
+			PC->DOUT ^= (1<<15);		
+			
+			printS_5x7(35, 10, "Game over");
+					
+			printS_5x7(5, 35, "Push button SW_INT1");
+			printS_5x7(5, 45, "to start the game!");
+
+			//buzzer
+			if (!isBuzzerOn) {
+				for (int i = 0; i < (5 * 2); i++) {
+						PB->DOUT ^= (1 << 11);
+						CLK_SysTickDelay(200000);
+				}
+				isBuzzerOn = 1;
+			}
+			break;
+		default:
+			break;
+		}
+	}
+}
+
+
+//-----------------------------------------------------------------------------------
+// Functions definition
+//-----------------------------------------------------------------------------------
+void System_Config(void) {
+	// Enable 12MHz HXT, wait still stable
+  CLK->PWRCON |= (1 << 0);
+  while(!(CLK->CLKSTATUS & HXT_STATUS));
+
+	CLK->PWRCON |= 1<<3;
+  while(!(CLK->CLKSTATUS & LIRC_STATUS)); // Wait until 10 kHz clock is stable
+
+  // CPU Clock Config Start---------------
+  // Only use 12 MHz HXT
+  // Select CPU clock
+  CLK->CLKSEL0 &= ~(0b111 << 0);  // 12 MHz HXT
+  CLK->PWRCON &= ~(1<<7);         // Normal mode
+  // Clock frequency divider
+  CLK->CLKDIV &= ~(0xF<<0);
+  // CPU Clock Config End----------------
+
+	//Clock source selection
 	CLK->CLKSEL0 &= (~(0x07 << 0));
 	CLK->CLKSEL0 |= (0x02 << 0);
-	//clock frequency division
+	//Clock frequency division
 	CLK->CLKDIV &= (~0x0F << 0);
+
+	//Enable clock of SPI3
+	CLK->APBCLK |= 1 << 15;
 	
 	//UART0 Clock selection and configuration
-	CLK->CLKSEL1 |= (0b11 << 24); // UART0 clock source is 22.1184 MHz
-	CLK->CLKDIV &= ~(0xF << 8); // clock divider is 1
-	CLK->APBCLK |= (1 << 16); // enable UART0 clock
+	CLK->CLKSEL1 |= (0x03 << 24);   // UART0 clock source is 22.1184 MHz
+	CLK->CLKDIV &= ~(0x0F << 8); 	// Clock Divider is 1
+	CLK->APBCLK |= (0x01 << 16); 	// Enable UART0 clock
+}
 
-	//enable clock of SPI3
-	CLK->APBCLK |= 1 << 15;
-	SYS_LockReg();  // Lock protected registers
+void Clock_Config(void) {
+	// Timer0 Config with Interrupt--------
+	CLK->CLKSEL1 &= ~(0x07 << 8);
+	CLK->CLKSEL1 |= (0x02 << 8);        // Select 12 MHz HLCK (DataSheet p128)
+	CLK->APBCLK |= (0x01 << 2);         // Enable TM0 
 
+	// Pre-scale (value + 1)
+	TIMER0->TCSR &= ~(0xFF << 0);
+	TIMER0->TCSR |= 11 << 0; 			// 12 Mhz above / (11+1) = 1 MHz
+
+	// Reset and config operating mode
+	TIMER0->TCSR |= (0x01 << 26);       // Reset Timer 0
+	
+	// Periodic mode
+	TIMER0->TCSR &= ~(0x03 << 27);		// Reset
+	TIMER0->TCSR |= (0x01 << 27);       // 0x01 Periodic mode 
+
+	TIMER0->TCSR &= ~(0x01 << 24);      // Disable CTB
+
+	// Enable TE bit (bit 29) of TCSR
+	// The bit will enable the timer interrupt flag TIF (for Polling mode and Interrupt)
+	TIMER0->TCSR |= (1 << 29);
+
+	// TDR to be updated continuously while timer counter is counting
+	TIMER0->TCSR |= (0x01 << 16);
+	TIMER0->TCMPR = TMR0_COUNT;
+
+	// TMR0 Interrupt
+	NVIC->ISER[0] |= (1 << 8); 	// TMR0 Interrupt System
+	NVIC->IP[2] &= ~(3 << 6); 	// Reset value - Highest priority
+	NVIC->IP[2] |= (0 << 6); 	// Lowest priority
+	//-----End of Timer0 Config---------
+}
+
+void GPIO_Config(void) {
+    // GPIO Configuration starts-------------
+	// LED5-6 - GPC12-13
+	PC->PMD &= (~(0x03 << 24));
+	PC->PMD |= (0x01 << 24); // push-pull
+
+	PC->PMD &= (~(0x03 << 26));
+	PC->PMD |= (0x01 << 26); // push-pull
+
+	// Buzzer - GPB11
+	PB->PMD &= (~(0x03 << 22));
+	PB->PMD |= (0x01 << 22); // push-pull
+
+	// GPIO Interrupt configuration. B.15 is the interrupt source
+	// Set Interrupt Debounce Cycle Control
+	GPIO->DBNCECON |= (1 << 4); 		// Debounce Clock Source 10 kHz LIRC
+	GPIO->DBNCECON &= ~(0xF << 0); 	// Clear first
+	GPIO->DBNCECON |= (8 << 0); 		// Sampling Interrupt Input every 256 clocks
+
+	// DataSheet p192 & p193
+	PB->PMD &= (~(0x03 << 30)); 		// Set pin mode to input
+	PB->DBEN |= (1 << 15); 					// Debounce
+	PB->IMD &= (~(0x01 << 15)); 		// 0: Trigger on edge -> Can control debounce
+	PB->IEN |= (0x01 << 15); 				// Falling edge trigger
+
+	//NVIC interrupt configuration for B.15 interrupt source
+	NVIC->ISER[0] |= (1 << 3); 			// Interrupt enable
+	NVIC->IP[0] &= (~(3 << 30)); 		// ISR priority
+	// GPIO Configuration ends-------------
 }
 
 void SPI3_Config(void) {
-	SYS->GPD_MFP |= 1 << 11; //1: PD11 is configured for alternative func-tion
-	SYS->GPD_MFP |= 1 << 9; //1: PD9 is configured for alternative function
-	SYS->GPD_MFP |= 1 << 8; //1: PD8 is configured for alternative function
+	SYS->GPD_MFP |= 1 << 11; 		//1: PD11 is configured for alternative func-tion
+	SYS->GPD_MFP |= 1 << 9; 		//1: PD9 is configured for alternative function
+	SYS->GPD_MFP |= 1 << 8; 		//1: PD8 is configured for alternative function
 
-	SPI3->CNTRL &= ~(1 << 23); //0: disable variable clock feature
-	SPI3->CNTRL &= ~(1 << 22); //0: disable two bits transfer mode
-	SPI3->CNTRL &= ~(1 << 18); //0: select Master mode
-	SPI3->CNTRL &= ~(1 << 17); //0: disable SPI interrupt
-	SPI3->CNTRL |= 1 << 11; //1: SPI clock idle high
-	SPI3->CNTRL &= ~(1 << 10); //0: MSB is sent first
-	SPI3->CNTRL &= ~(3 << 8); //00: one transmit/receive word will be exe-cuted in one data transfer
+	SPI3->CNTRL &= ~(1 << 23); 	//0: disable variable clock feature
+	SPI3->CNTRL &= ~(1 << 22); 	//0: disable two bits transfer mode
+	SPI3->CNTRL &= ~(1 << 18); 	//0: select Master mode
+	SPI3->CNTRL &= ~(1 << 17); 	//0: disable SPI interrupt
+	SPI3->CNTRL |= 1 << 11; 		//1: SPI clock idle high
+	SPI3->CNTRL &= ~(1 << 10); 	//0: MSB is sent first
+	SPI3->CNTRL &= ~(3 << 8); 	//00: one transmit/receive word will be exe-cuted in one data transfer
 
-	SPI3->CNTRL &= ~(31 << 3); //Transmit/Receive bit length
-	SPI3->CNTRL |= 9 << 3;     //9: 9 bits transmitted/received per data transfer
+	SPI3->CNTRL &= ~(31 << 3); 	//Transmit/Receive bit length
+	SPI3->CNTRL |= 9 << 3;     	//9: 9 bits transmitted/received per data transfer
 
-	SPI3->CNTRL |= (1 << 2);  //1: Transmit at negative edge of SPI CLK
+	SPI3->CNTRL |= (1 << 2);  	//1: Transmit at negative edge of SPI CLK
 	SPI3->DIVIDER = 0; // SPI clock divider. SPI clock = HCLK / ((DIVID-ER+1)*2). HCLK = 50 MHz
 }
 
-void timer1_config(void)
-{
-		//TIMER1
-  CLK->CLKSEL1 &= ~(0b111 <<12);  // clear the clock selection for timer 1
-	CLK->CLKSEL1 |= (0b010 << 12); // use clock source of the CPU for the timer 1
-	CLK->APBCLK |= (1<<3); // enable the clock for 1
+void UART0_Config(void) {
+	// UART0 pin configuration. PB.0 pin is for UART0 RX
+	PB->PMD &= ~(0x03 << 0);			// PB.0 is input pin
+	SYS->GPB_MFP |= (0x01 << 0);  // GPB_MFP[0] = 1 -> PB.0 is UART0 RX pin
 
-	//reset timer-do before prescaler
-	TIMER1->TCSR |= (1<<26);
-	//set prescaler 11 for timer 1 
-	TIMER1->TCSR &= ~(0xff << 0); // clear the TCSR register for timer 1
-	TIMER1 ->TCSR |= 49 ; // set prescaler to 49 that reduce the clock frequency from 50Mhz to 1Mhz	
-	
-	//Mode periodic
-	TIMER1->TCSR &= ~(0b11<<27);
-	TIMER1->TCSR |= (0b01<<27);
-	//BIT 24: USE TIMER AS COUNTER -> DISABLE
-	TIMER1->TCSR &= ~(1<<24); //
-	//value: update count to register
-	TIMER1->TCSR |= (1<<16);
-	TIMER1->TCSR |= (1 << 29);
-	//set timer compare value
-	// calculate the timer count value for timer 0
-	// ((2s)/1/50Mhz) - 1 = 9999999999
-	TIMER1->TCMPR = TIMER1_COUNTS;
-	//ENABLE TIMER
-	TIMER1->TCSR |= (1<<30);
-	
+	// UART0 operation configuration
+	UART0->FCR |= (0x03 << 1);    // Clear both TX & RX FIFO
+	UART0->FCR &= ~(0x0F << 16);  // FIFO Trigger Level is 1 byte
 
-	//Set Timer1 in NVIC Set-Enable Control Register (NVIC_ISER)
-	NVIC->ISER[0] |= 1 << 9;
-	//Priority for Timer 1
-	NVIC->IP[2] &= (~(0b11<< 14));
-	NVIC->IP[2] |= (0b01<< 14);
+	UART0->FCR &= ~(0xF << 4);		// RX FIFO by 1 byte (8bits)
+
+	UART0->LCR &= ~(0x01 << 3);   // No parity bit
+	UART0->LCR &= ~(0x01 << 2);   // One stop bit
+	UART0->LCR |= (0x03 << 0);    // 8 data bit
+
+	// UART0 Interrupt
+	UART0->IER |= (0x01 << 0);    // Enable UART0 Interrupt RDA_IEN
+
+	// Vector Number (DataSheet p95) NVIC->ISER[0] (1 << x)
+	// UART02_INT : 28 (12)
+	NVIC->ISER[0] |= (1 << 12);    // UART02_INT
+	// Interrupt Priority (DataSheet p105) NVIC->IP[3]  (value << x)
+	// value 0: Highest priority | 3: Lowest Priority
+	// UART02_INT : [7:6] 	(12)
+	NVIC->IP[3] &= ~(3 << 6); // UART02_INT Highest priority
+
+	// Baud Rate config: BRD/A = 1, DIV_X_EN=0
+    // Baud Rate from Terminal software: 19200 bps -> A=70
+	// --> Mode 0, Baud rate = UART_CLK/[16*(A+2)] = 22.1184 MHz/[16*(70+2)]= 19200 bps
+	UART0->BAUD &= ~(0x0FFFF << 0);
+	UART0->BAUD |= 70;
+	UART0->BAUD &= ~(0x03 << 28); // Mode 0
 }
 
-void timer0_config(void)
-{
-//Configure Timer 0 
-	CLK->CLKSEL1 &= ~(0b111 <<8);  // clear the clock selection
-	CLK->CLKSEL1 |= (0b010 << 8); // use clock source of the CPU for the timer
-	CLK->APBCLK |= (1<<2); // enable the clock for timer
-	
-	//set prescaler 11 for timer 0 
-	TIMER0->TCSR &= ~(0xff << 0); // clear the TCSR register
-	TIMER0 ->TCSR |= 49 << 0; // set prescaler to 11 that reduce the clock frequency from 50Mhz to 1Mhz
-	
-	// bit 16 CRST to 1: reset prescaler counter, CEN and timer 0 counter
-	TIMER0->TCSR |= (1<<0);
-	
-	// define Timer 0 operation mode
-  TIMER0->TCSR &= ~(0b11 << 27);	//clear timer 0 MODE
-	TIMER0->TCSR  |= 0b01<<27; //enable the periotic mode 01
-	TIMER0->TCSR &= ~(1<<24);// Disable the counter mode of Timer 0
-	
-	//set the TDR to be updated continuously while timer counter 0 is counting
-	TIMER0->TCSR |= (1<<16);
-	
-	// calculate the timer count value for timer 0
-	// ((0.02s)/1/50Mhz) - 1 = 999
-	
-	// Set the reload value for timer 0
-	TIMER0->TCMPR = TIMER0_COUNTS;
-	
-	// Configuring the polling Start
-	// enable the TE (bit 29) 
-	TIMER0->TCSR |= (1<<29);
-	TIMER0->TCSR |= (1<<30);// start count   
-//NVIC interrupt configuration for Timer 0 interrupt
-	NVIC->ISER[0] |= 1<<8;
-	NVIC->IP[2] &= ~(0b11 << 6);
-	
+char UART0_GetChar(void) {
+	while (1) {
+		if(!(UART0->FSR & (0x01 << 14))){
+			return(UART0->DATA);
+		}
+	}
 }
 
-void WelcomeMenueDisplay(void) {
-	 printS_5x7(6,12, "Team B");
-	printS_5x7(30,30, "Battle Ship Game");
+void UART02_IRQHandler(void) {
+	char input = UART0_GetChar();
+	
+	if (input == '0' || input == '1') {
+		// Store value
+		map[mapY][mapX] = input - '0';
+		
+		// Increase load index
+		if (mapY == 7) {
+			mapX++;
+			mapY = 0;
+		} else {
+			mapY++;
+		}
+	}
+	
+	if (mapX == 7 && mapY == 7) {
+		PC->DOUT ^= (1 << 13); // Notify that the map is loaded all - LED6 ON
+		CLK_SysTickDelay(50000);
+		cleanLCD = 1;
+		state = 1;
+	}
 }
 
-
-void InitializeLCD(void)
-{
-	SendLCDCommand(0xE2); // Set system reset
-	SendLCDCommand(0xA1); // Set Frame rate 100 fps
-	SendLCDCommand(0xEB); // Set LCD bias ratio E8~EB for 6~9 (min~max)
-	SendLCDCommand(0x81); // Set V BIAS potentiometer
-	SendLCDCommand(0xA0); // Set V BIAS potentiometer: A0 ()
-	SendLCDCommand(0xC0);
-	SendLCDCommand(0xAF); // Set Display Enable
+void EINT1_IRQHandler(void) {
+	if (state == 1) {
+		// shot to start game
+		cleanLCD = 1;
+		state = 2;
+	} else if (state == 2) {
+		// Check shot condition
+		if (view[y-1][x-1] == 0) {
+			// Process shot
+			if (map[y-1][x-1] == 1) {
+				view[y-1][x-1] = 1;
+                
+				// Generate systick delay for led
+				for (int i = 0; i < (3 * 2); i++) {
+								PC->DOUT ^= (1 << 12); // LED5 ON
+								CLK_SysTickDelay(25000);
+				}
+				
+				// If hit, hit increases by 1
+				hit++;
+			}
+		}
+        
+		// Increase shot
+		shot++;
+		
+		// Check if whether game is over
+		if ((shot == 16) || (hit == 10)) {
+			// Change state to Game Over
+			cleanLCD = 1;
+			state = 3;
+		} 
+		
+		// Reset value of x and y coordinates for the next shot
+		x = 1;
+		y = 1;
+		isY = false;
+		
+	} else if (state == 3) {
+		// shot to reset game
+		cleanLCD = 1;
+		state = 1;
+		// Reset value
+		reset();
+	}
+	// Clear interrupt
+	PB->ISRC |= (1 << 15);
 }
 
-void SendLCDCommand(unsigned char temp)
-{
+// 7-segment sweeping
+void TMR0_IRQHandler(void) {
+	keyPad_pressed();
+	if (digit == 3) {
+			digit = 0;
+	} else {
+			digit++;
+	}
+	displayDigit();
+      
+	TIMER0->TISR |= (1 << 0);
+}
+
+void LCD_start(void) {
+	LCD_command(0xE2); // Set system reset
+	LCD_command(0xA1); // Set Frame rate 100 fps
+	LCD_command(0xEB); // Set LCD bias ratio E8~EB for 6~9 (min~max)
+	LCD_command(0x81); // Set V BIAS potentiometer
+	LCD_command(0xA0); // Set V BIAS potentiometer: A0 ()
+	LCD_command(0xC0);
+	LCD_command(0xAF); // Set Display Enable
+}
+
+void LCD_command(unsigned char temp) {
 	SPI3->SSR |= 1 << 0;
 	SPI3->TX[0] = temp;
 	SPI3->CNTRL |= 1 << 0;
@@ -336,9 +619,7 @@ void SendLCDCommand(unsigned char temp)
 	SPI3->SSR &= ~(1 << 0);
 }
 
-
-void SendLCDData(unsigned char temp)
-{
+void LCD_data(unsigned char temp) {
 	SPI3->SSR |= 1 << 0;
 	SPI3->TX[0] = 0x0100 + temp;
 	SPI3->CNTRL |= 1 << 0;
@@ -346,458 +627,17 @@ void SendLCDData(unsigned char temp)
 	SPI3->SSR &= ~(1 << 0);
 }
 
-
-void clearLCD(void)
-{
+void LCD_clear(void) {
 	int16_t i;
-	SetLCDAddress(0x0, 0x0);
-	for (i = 0; i < 132 * 8; i++)
-	{
-		SendLCDData(0x00);
-	}
-	CLK_SysTickDelay(50000); // wait for all led is clear 
-}
-
-
-
-void SetLCDAddress(uint8_t PageAddr, uint8_t ColumnAddr)
-{
-	SendLCDCommand(0xB0 | PageAddr);
-	SendLCDCommand(0x10 | (ColumnAddr >> 4) & 0xF);
-	SendLCDCommand(0x00 | (ColumnAddr & 0xF));
-}
-
-void EnableKeyPad(void) {
-	GPIO_SetMode(PA, BIT0, GPIO_MODE_QUASI);
-	GPIO_SetMode(PA, BIT1, GPIO_MODE_QUASI);
-	GPIO_SetMode(PA, BIT2, GPIO_MODE_QUASI);
-	GPIO_SetMode(PA, BIT3, GPIO_MODE_QUASI);
-	GPIO_SetMode(PA, BIT4, GPIO_MODE_QUASI);
-	GPIO_SetMode(PA, BIT5, GPIO_MODE_QUASI);
-}
-
-uint8_t ScanKeyPad(void) {
-	PA0 = 1; PA1 = 1; PA2 = 0; PA3 = 1; PA4 = 1; PA5 = 1;
-	if (PA3 == 0) return 1;
-	if (PA4 == 0) return 4;
-	if (PA5 == 0) return 7;
-	PA0 = 1; PA1 = 0; PA2 = 1; PA3 = 1; PA4 = 1; PA5 = 1;
-	if (PA3 == 0) return 2;
-	if (PA4 == 0) return 5;
-	if (PA5 == 0) return 8;
-	PA0 = 0; PA1 = 1; PA2 = 1; PA3 = 1; PA4 = 1; PA5 = 1;
-	if (PA3 == 0) return 3;
-	if (PA4 == 0) return 6;
-	if (PA5 == 0) return 9;
-	return 0;
-}
-
-void displayCol(void)
-{
-	if(gameCheck == OFF || gameCheck == RESET) {
-		PE->DOUT = seg[0];
-	}
-	else {
-		PE->DOUT = seg[PlayerPosition.playerCol];
+	LCD_SetAddress(0x0, 0x0);
+	for (i = 0; i < 132 * 8; i++) {
+		LCD_data(0x00);
 	}
 }
 
-void displayRow(void) {
-	if(gameCheck == OFF || gameCheck == RESET) {
-		PE->DOUT = seg[0];
-	}
-	else {
-		PE->DOUT = seg[PlayerPosition.playerRow];
-	}
+void LCD_SetAddress(uint8_t PageAddr, uint8_t ColumnAddr) {
+	LCD_command(0xB0 | PageAddr);
+	LCD_command(0x10 | (ColumnAddr >> 4) & 0xF);
+	LCD_command(0x00 | (ColumnAddr & 0xF));
 }
-void aimShip(void)
-{
-	 int user_choice = 0;
-
-    // Continuously scan for key input
-    do {
-        user_choice = ScanKeyPad();
-        if (isShoot == 1) {
-            isShoot = 0;
-            return;
-        }
-    } while (user_choice == 0);
-
-    // Debounce delay
-    CLK_SysTickDelay(DEBOUNCE_DELAY);
-
-    // Select row or column based on user input
-    if (user_choice != CHANGE_MODE_KEY) {
-        if (isColSelected) {
-            PlayerPosition.playerRow = user_choice; // Set player row
-        } else {
-            PlayerPosition.playerCol = user_choice; // Set player column
-        }
-    } else {
-        // Toggle between selecting row and column
-        isColSelected = !isColSelected;
-    }
-
-    // Update LED indicator based on selection mode
-    if (isColSelected) {
-        PC->DOUT &= ~(1 << LED_INDICATOR_PIN); // LED on for vertical selection
-    } else {
-        PC->DOUT |= 1 << LED_INDICATOR_PIN;    // LED off for horizontal selection
-    }
-
-    // Refresh LCD display
-    clear_LCD();
-    displayMap();	
-}
-
-
-void seven_segment_config(void)
-{
-	// 7 seg config
-  PC->PMD &= (~(0xFF<< 8));		
-  PC->PMD |= (0b01010101 << 8);   //push pull for 4 leds
-	
-	//Set mode for PE0 to PE7
-	PE->PMD &= (~(0xFFFF<< 0));		
-	PE->PMD |= 0b0101010101010101<<0;   //set push pull for 7 segments
-
-}
-
-void EINT1_Config(void)
-{
-	//set external interrupt on button GPB15
-	PB->PMD &= ~(0x03 << 30); // set The GPB15 as input
-	PB->IMD &= ~(0x01 << 15); // set edge trigger interrupt
-  PB->IEN |= (1<<15); // choose the falling Edge intterrupt
-	
-	//enable the debounce function
-  // NVIC interrupt configuration for GPIO-B15 interrupt source
-  NVIC->ISER[0] |= 1<<3;
-  NVIC->IP[0] &= (~(3<<30));		
-}
-
-
-void shootTheShip(void) {
-    numofshipsdefeated = 0;
-    isHit = 0; // Assume no hit initially
-		
-
-    // Check if any ship is hit
-    for (int j = 0; j <= 4; j++) { // col -1 and row -1 to match from keypad to the index of ship
-        if (PlayerPosition.playerCol-1 == shipList[j].pt1Col && PlayerPosition.playerRow-1 == shipList[j].pt1Row && shipList[j].pt1Shot == 1) { // check of the current part is already shot, doesnt count
-            shipList[j].pt1Shot = 0; // Hit the first part of the ship
-            isHit = 1;
-						numberOfHitShot++;
-            break;
-        } else if (PlayerPosition.playerCol-1 == shipList[j].pt2Col && PlayerPosition.playerRow-1 == shipList[j].pt2Col && shipList[j].pt2Shot == 1) {
-            shipList[j].pt2Shot = 0; // Hit the second part of the ship
-            isHit = 1;
-						numberOfHitShot++;
-            break;
-        }
-    }
-    // Count the number of defeated ships
-    for (int j = 0; j <= 4; j++) {
-        if (shipList[j].pt1Shot == 0 && shipList[j].pt2Shot == 0) {
-            numofshipsdefeated++;
-        }
-    }
-    totalShot++;
-    // Check game status
-    if (numofshipsdefeated >= 5 && totalShot <= 16) {
-				isGameOver = 1;
-				clearLCD();
-				printS_5x7(30,30, "YOU WIN");
-				
-    } else if (totalShot > 16) {
-				isGameOver = 1;
-				clearLCD();
-				printS_5x7(30,30, "YOU LOSE");
-    }
-		else {
-			clear_LCD();
-			displayMap();  // call this function again to load the ship list again and check any part of shit is shot and displayed
-		}
- 
-}
-
-void UART0_Config(void) {
-	// UART0 pin configuration. PB.1 pin is for UART0 TX
-	GPIO_SetMode(PB,BIT1,GPIO_MODE_OUTPUT); // set pb1 as output
-	
-	SYS->GPB_MFP |= (1 << 1); // GPB_MFP[1] = 1 -> PB.1 is UART0 TX pin
-	
-	SYS->GPB_MFP |= (1 << 0); // GPB_MFP[0] = 1 -> PB.0 is UART0 RX pin	
-	PB->PMD &= ~(0b11 << 0);	// Set Pin Mode for GPB.0(RX - Input)
-
-	// UART0 operation configuration
-	UART0->LCR |= (0b11 << 0); // 8 data bit
-	UART0->LCR &= ~(1 << 2); // one stop bit	
-	UART0->LCR &= ~(1 << 3); // no parity bit
-	UART0->FCR |= (1 << 1); // clear RX FIFO
-	UART0->FCR |= (1 << 2); // clear TX FIFO
-	UART0->FCR &= ~(0xF << 16); // FIFO Trigger Level is 1 byte]
-	
-	//Baud rate config: BRD/A = 1, DIV_X_EN=0
-	//--> Mode 0, Baud rate = UART_CLK/[16*(A+2)] = 9600 bps
-	UART0->BAUD &= ~(0b11 << 28); // mode 0	
-	UART0->BAUD &= ~(0xFFFF << 0);
-	UART0->BAUD |= 142;
-	//config interupt for the uart
-	NVIC->ISER[0] = 1<<12; // enable the control register enable the vector 28
-	NVIC->IP[3] &= ~(1<<6); // set the interrupt priority of IRQ12
-	UART0->IER |= (1<<0); // enable the uart interupt
-}
-
-
-void UART02_IRQHandler(void){
-	
-	char ReceivedByte;
-	ReceivedByte = UART0->DATA;
-	
-	map[dataReceive] = ReceivedByte;
-  dataReceive++;
-	if(dataReceive > 77) {
-				loadMap();
-				clearLCD();
-				printS_5x7(8,30, "Map Loaded Successfully");
-				isMapReady = 1;
-				dataReceive=0;
-	}
-}
-//load map function
-
-void loadMap(void) {
-    unsigned int rowIndex = 0, colIndex = 0;
-
-    for (unsigned int i = 0; map[i] != '\0'; i++) {
-        char currentChar = map[i];
-
-        switch (currentChar) {
-            case '0':
-            case '1':
-                loadedMap[rowIndex][colIndex] = currentChar;
-                colIndex++;
-                break;
-            case '\n':
-                rowIndex++;
-                colIndex = 0;
-                break;
-
-            default:
-                // Handle other characters or spaces
-                break;
-        }
-    }
-		
-		// generate ship
-		int shipIndex = 0;
-    for (int row = 0; row < 8; row++) {
-        for (int col = 0; col < 8; col++) {
-            // Check if current cell is the first part of a ship
-					//&& (shipList[shipIndex - 1].pt1Row != row && shipList[shipIndex - 1].pt1Col != col)
-            if (loadedMap[row][col] == '1' ) { // check the current position is not overlapped
-                // Initialize the first part of the ship
-                shipList[shipIndex].pt1Row = row;
-                shipList[shipIndex].pt1Col = col;
-                shipList[shipIndex].pt1Shot = 1;
-
-                // Check for the second part of the ship horizontally
-                if (col + 1 < 8 && loadedMap[row][col + 1] == '1') {
-                    shipList[shipIndex].pt2Col = row;
-                    shipList[shipIndex].pt2Col = col + 1;
-										shipList[shipIndex].pt2Shot = 1;
-										loadedMap[row][col + 1] = '0'; // to avoild conflict 2 ship
-                }
-                // Check for the second part of the ship vertically
-                else if (row + 1 < 8 && loadedMap[row + 1][col] == '1') {
-                    shipList[shipIndex].pt2Col = row + 1;
-                    shipList[shipIndex].pt2Col = col;
-										shipList[shipIndex].pt2Shot = 1;
-										loadedMap[row + 1][col] = '0';// to avoild conflict 2 ship
-                }
-                // If no second part found, continue to next cell
-                else {
-                    continue;
-                }
-                shipIndex++;
-            }
-        }
-    }
-}
-
-
-void displayMap(void) {
-    for (int row = 0; row < 8; row++) {
-        for (int col = 0; col < 8 && loadedMap[row][col] != 0; col++) {
-            char displayChar = '-';
-            int col_pos = col * 17; // the starting position of column
-						
-							for (int k = 0; k <= 4; k++) { // check if any part of ship is shot the replaced with X
-                if ((shipList[k].pt1Shot == 0 && shipList[k].pt1Col == col && shipList[k].pt1Row == row) ||
-                    (shipList[k].pt2Shot == 0 && shipList[k].pt2Col == col && shipList[k].pt2Col == row)) {
-                    displayChar = 'X';
-                    break;
-                }
-            
-						}
-
-            printC_5x7(col_pos, row * 8, displayChar);
-        }
-    }
-}
-
-void displayNumberOfShot(int state) {
-  int tens, units;
-
-    if (totalShot >= 0 && totalShot < 100) { // Ensure totalShot is within the range 0-99
-        tens = totalShot / 10;   // Get the tens digit
-        units = totalShot % 10;  // Get the units digit
-    }
-		if(state == 1) {
-			PE->DOUT = seg[tens]; // at the index of seg, the corresponding value for that seg
-		}
-		else if(state == 2) {
-			PE->DOUT = seg[units];
-		}
-		//PE->DOUT = seg[tens]; // at the index of seg, the corresponding value for that seg
-		//PE->DOUT = seg[units];
-}
-
-
-void TMR1_IRQHandler(void) { // to blink and buzzer since the frequency is low
-	if(isHit)
-	{
-		if (countBlink < 6) {
-            PC->DOUT ^= (1 << 12); // Toggle PC12
-            countBlink++;
-        } else {
-            // Reset everything once blinking is done
-            isHit = 0;
-            countBlink = 0;
-            PC->DOUT |= (1 << 12); // Ensure LED is turned off
-        }
-	}
-	
-	if(isGameOver && buzzer_count < 10)
-	{
-		PB->DOUT ^= 1<<11;
-		buzzer_count++;
-	}
-	
-	TIMER1->TISR |= (1 << 0); // clear timer1 interttupt flag
-} 
-
-void TMR0_IRQHandler(void) { // to display LED since the freq is low
-		col_temp = isColSelected;
-	//Turn on U11, while turn off other 7segments
-		if(scanLED > 3) {
-			scanLED = 0;
-		}
-		else {
-			scanLED++;
-		}
-				PC->DOUT &= ~(1 << 7);
-				PC->DOUT &= ~(1<<6);		//SC3
-				PC->DOUT &= ~(1<<5);		//SC2
-				PC->DOUT &= ~(1<<4);		//SC1
-  switch(scanLED) {
-    case 0: // toggle SC4
-        PC->DOUT |= (1 << 7);
-				PC->DOUT &= ~(1<<6);		//SC3
-				PC->DOUT &= ~(1<<5);		//SC2
-				PC->DOUT &= ~(1<<4);		//SC1
-				if(isColSelected) {
-					displayRow();
-				}
-				else {
-					displayCol();
-				}
-        break;
-    case 1: // toggle seg led 2
-				PC->DOUT &= ~(1 << 7);
-				PC->DOUT &= ~(1<<6);		//SC3
-				PC->DOUT |= (1<<5);		//SC2
-				PC->DOUT &= ~(1<<4);		//SC1
-				displayNumberOfShot(scanLED);
-        break;
-    case 2: // toggle seg led 3
-				PC->DOUT &= ~(1 << 7);
-				PC->DOUT &= ~(1<<6);		//SC3
-				PC->DOUT &= ~(1<<5);		//SC2
-				PC->DOUT |= (1<<4);		//SC1
-				displayNumberOfShot(scanLED);
-        break;
-    default:
-        break;
-}
-	
-	if(isGameOver == 1 && playAgainDisplay == 0) {
-		if(timerCounter <  TIMER1_COUNTS) { // wait after 6s to print the play again message
-			timerCounter++;
-		}
-		else {
-			clearLCD();
-			playAgainDisplay = 1;
-		}		
-	}
-	else if(isGameOver == 1 && playAgainDisplay == 1) {
-				printS_5x7(30,30, "Play again?");
-	}
-	TIMER0->TISR |= (1 << 0); // clear timer0 interrupt flag
-} 
-
-
-
-void EINT1_IRQHandler(void) { 
-		 CLK_SysTickDelay(150000); // Button debounce 
-
-    // Using switch case for gameCheck handling
-    switch(gameCheck) {
-        case ON: // if the game is on, shoot the ship
-            isShoot = 1;
-            shootTheShip();
-            break;
-
-        case RESET:
-            clearLCD(); // Clear LCD
-            loadMap(); // Load map again
-            gameCheck = ON;
-            break;
-
-        default:
-            break;
-    }
-		
-		if(gameCheck == OFF && isMapReady) { // to prevent user press button when map is not transmitted
-			clearLCD();
-			gameCheck = ON;
-		}
-
-    if(isGameOver && buzzer_count >= 10 && timerCounter >= TIMER1_COUNTS) { // press to reset the game
-        // Reset all values
-        clearLCD(); // Clear LCD
-        gameCheck = RESET;
-    }
-		
-
-    PB->ISRC |= (1 << 15); // Clear external interrupt flag
-}
-
-void reset (void)
-{
-	isGameInit = 0;
-  buzzer_count = 0;
-  totalShot = 0;
-  PlayerPosition.playerCol = 1;
-  PlayerPosition.playerRow = 1;
-  isColSelected = 0;
-  dataReceive = 0;
-  numofshipsdefeated = 0;
-	isGameOver = 0;
-	timerCounter = 0;
-	playAgainDisplay = 0;
-	displayCol();
-	displayRow();
-	WelcomeMenueDisplay();
-}
+//------------------------ main.c CODE ENDS --------------------------------------------------

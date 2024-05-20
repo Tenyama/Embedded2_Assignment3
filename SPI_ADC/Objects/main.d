@@ -26,4 +26,5 @@
   C:\Program\ Files\Program_Keil\Keil_v5\Library\StdDriver\Include\SC.h \
   C:\Program\ Files\Program_Keil\Keil_v5\Library\StdDriver\Include\PS2.h \
   C:\Program\ Files\Program_Keil\Keil_v5\Library\StdDriver\Include\CLK.h \
-  C:\Program\ Files\Program_Keil\Keil_v5\Library\StdDriver\Include\ACMP.h
+  C:\Program\ Files\Program_Keil\Keil_v5\Library\StdDriver\Include\ACMP.h \
+  C:\Program\ Files\Program_Keil\Keil_v5\Library\NUC1xx-LB_002\Include\LCD.h

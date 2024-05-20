@@ -339,7 +339,7 @@
               <MiscControls></MiscControls>
               <Define></Define>
               <Undefine></Undefine>
-              <IncludePath>C:\Program Files\Program_Keil\Keil_v5\Library\NUC100Series\Include;C:\Program Files\Program_Keil\Keil_v5\Library\CMSIS\Include;C:\Program Files\Program_Keil\Keil_v5\Library\StdDriver\Include</IncludePath>
+              <IncludePath>C:\Program Files\Program_Keil\Keil_v5\Library\NUC100Series\Include;C:\Program Files\Program_Keil\Keil_v5\Library\CMSIS\Include;C:\Program Files\Program_Keil\Keil_v5\Library\StdDriver\Include;C:\Program Files\Program_Keil\Keil_v5\Library\NUC1xx-LB_002\Include;C:\Program Files\Program_Keil\Keil_v5\Library\NuMakerLib\Include</IncludePath>
             </VariousControls>
           </Cads>
           <Aads>
@@ -412,6 +412,11 @@
               <FileName>spi.c</FileName>
               <FileType>1</FileType>
               <FilePath>C:\Program Files\Program_Keil\Keil_v5\Library\StdDriver\Source\spi.c</FilePath>
+            </File>
+            <File>
+              <FileName>LCD.c</FileName>
+              <FileType>1</FileType>
+              <FilePath>C:\Program Files\Program_Keil\Keil_v5\Library\NUC1xx-LB_002\Source\LCD.c</FilePath>
             </File>
           </Files>
         </Group>

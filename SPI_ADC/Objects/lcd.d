@@ -1,7 +1,7 @@
-./objects/main.o: main.c \
+./objects/lcd.o: \
+  C:\Program\ Files\Program_Keil\Keil_v5\Library\NUC1xx-LB_002\Source\LCD.c \
   C:\Program\ Files\Program_Keil\Keil_v5\ARM\ARMCLANG\Bin\..\include\stdio.h \
   C:\Program\ Files\Program_Keil\Keil_v5\ARM\ARMCLANG\Bin\..\include\string.h \
-  C:\Program\ Files\Program_Keil\Keil_v5\ARM\ARMCLANG\Bin\..\include\stdbool.h \
   C:\Program\ Files\Program_Keil\Keil_v5\Library\NUC100Series\Include\NUC100Series.h \
   C:\Program\ Files\Program_Keil\Keil_v5\Library\CMSIS\Include\core_cm0.h \
   C:\Program\ Files\Program_Keil\Keil_v5\ARM\ARMCLANG\Bin\..\include\stdint.h \
@@ -29,4 +29,6 @@
   C:\Program\ Files\Program_Keil\Keil_v5\Library\StdDriver\Include\PS2.h \
   C:\Program\ Files\Program_Keil\Keil_v5\Library\StdDriver\Include\CLK.h \
   C:\Program\ Files\Program_Keil\Keil_v5\Library\StdDriver\Include\ACMP.h \
-  LCD.h
+  C:\Program\ Files\Program_Keil\Keil_v5\Library\NUC1xx-LB_002\Include\LCD.h \
+  C:\Program\ Files\Program_Keil\Keil_v5\Library\NuMakerLib\Include\Font5x7.h \
+  C:\Program\ Files\Program_Keil\Keil_v5\Library\NuMakerLib\Include\Font8x16.h
