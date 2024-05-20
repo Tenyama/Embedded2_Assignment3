@@ -22,7 +22,7 @@ Dialog DLL:      TARMCM1.DLL V1.14.2.0
  
 <h2>Project:</h2>
 C:\Users\s3977955\OneDrive - RMIT University\Embedded 2\Embedded2_Assignment3\UART\UART.uvprojx
-Project File Date:  05/17/2024
+Project File Date:  05/20/2024
 
 <h2>Output:</h2>
 *** Using Compiler 'V6.14', folder: 'C:\Program Files\Program_Keil\Keil_v5\ARM\ARMCLANG\Bin'
@@ -204,6 +204,7 @@ main.c(187): warning: implicit conversion changes signedness: 'int' to 'unsigned
                     ~~  ^~~~~~~~~
 46 warnings generated.
 compiling main.c...
+assembling startup_NUC100Series.s...
 C:/Program Files/Program_Keil/Keil_v5/Library/NUC100Series/Source/system_NUC100Series.c(13): warning: In file included from...
 C:/Program Files/Program_Keil/Keil_v5/Library/NUC100Series/Include\NUC100Series.h(150): warning: In file included from...
 C:/Program Files/Program_Keil/Keil_v5/Library/CMSIS/Include\core_cm0.h(116): warning: In file included from...
@@ -333,13 +334,135 @@ uint32_t gau32ClkSrcTbl[] = {__HXT, __LXT, __HSI, __LIRC, NULL, NULL, NULL, __HI
 ^
 29 warnings generated.
 compiling system_NUC100Series.c...
-assembling startup_NUC100Series.s...
+C:/Program Files/Program_Keil/Keil_v5/Library/StdDriver/Source/gpio.c(12): warning: In file included from...
+C:/Program Files/Program_Keil/Keil_v5/Library/NUC100Series/Include\NUC100Series.h(150): warning: In file included from...
+C:/Program Files/Program_Keil/Keil_v5/Library/CMSIS/Include\core_cm0.h(116): warning: In file included from...
+C:/Program Files/Program_Keil/Keil_v5/Library/CMSIS/Include\core_cmInstr.h(406): warning: implicit conversion changes signedness: 'uint32_t' (aka 'unsigned int') to 'int32_t' (aka 'int') [-Wsign-conversion]
+  return(result);
+  ~~~~~~ ^~~~~~
+C:/Program Files/Program_Keil/Keil_v5/Library/StdDriver/Source/gpio.c(12): warning: In file included from...
+C:/Program Files/Program_Keil/Keil_v5/Library/NUC100Series/Include\NUC100Series.h(150): warning: In file included from...
+C:/Program Files/Program_Keil/Keil_v5/Library/CMSIS/Include\core_cm0.h(574): warning: implicit conversion changes signedness: 'int' to 'unsigned int' [-Wsign-conversion]
+    SCB->SHP[_SHP_IDX(IRQn)] = (SCB->SHP[_SHP_IDX(IRQn)] & ~(0xFF << _BIT_SHIFT(IRQn))) |
+                                                         ~ ^~~~~~~~~~~~~~~~~~~~~~~~~~~
+C:/Program Files/Program_Keil/Keil_v5/Library/CMSIS/Include\core_cm0.h(577): warning: implicit conversion changes signedness: 'int' to 'unsigned int' [-Wsign-conversion]
+    NVIC->IP[_IP_IDX(IRQn)] = (NVIC->IP[_IP_IDX(IRQn)] & ~(0xFF << _BIT_SHIFT(IRQn))) |
+                                                       ~ ^~~~~~~~~~~~~~~~~~~~~~~~~~~
+C:/Program Files/Program_Keil/Keil_v5/Library/CMSIS/Include\core_cm0.h(608): warning: function 'NVIC_SystemReset' could be declared with attribute 'noreturn' [-Wmissing-noreturn]
+{
+^
+C:/Program Files/Program_Keil/Keil_v5/Library/StdDriver/Source/gpio.c(12): warning: In file included from...
+C:/Program Files/Program_Keil/Keil_v5/Library/NUC100Series/Include\NUC100Series.h(11321): warning: anonymous unions are a C11 extension [-Wc11-extensions]
+    union
+    ^
+C:/Program Files/Program_Keil/Keil_v5/Library/NUC100Series/Include\NUC100Series.h(13605): warning: non-portable path to file '"sys.h"'; specified path differs in case from file name on disk [-Wnonportable-include-path]
+#include "SYS.h"
+         ^~~~~~~
+         "sys.h"
+C:/Program Files/Program_Keil/Keil_v5/Library/NUC100Series/Include\NUC100Series.h(13606): warning: non-portable path to file '"adc.h"'; specified path differs in case from file name on disk [-Wnonportable-include-path]
+#include "ADC.h"
+         ^~~~~~~
+         "adc.h"
+C:/Program Files/Program_Keil/Keil_v5/Library/NUC100Series/Include\NUC100Series.h(13607): warning: non-portable path to file '"fmc.h"'; specified path differs in case from file name on disk [-Wnonportable-include-path]
+#include "FMC.h"
+         ^~~~~~~
+         "fmc.h"
+C:/Program Files/Program_Keil/Keil_v5/Library/StdDriver/Source/gpio.c(12): warning: In file included from...
+C:/Program Files/Program_Keil/Keil_v5/Library/NUC100Series/Include\NUC100Series.h(13607): warning: In file included from...
+C:/Program Files/Program_Keil/Keil_v5/Library/StdDriver/Include\FMC.h(314): warning: implicit conversion changes signedness: 'int' to 'uint32_t' (aka 'unsigned int') [-Wsign-conversion]
+    FMC->ISPADR = (u8index << 2);      /* Set UID Address. It must be word alignment. */
+                ~  ~~~~~~~~^~~~
+C:/Program Files/Program_Keil/Keil_v5/Library/StdDriver/Source/gpio.c(12): warning: In file included from...
+C:/Program Files/Program_Keil/Keil_v5/Library/NUC100Series/Include\NUC100Series.h(13608): warning: non-portable path to file '"gpio.h"'; specified path differs in case from file name on disk [-Wnonportable-include-path]
+#include "GPIO.h"
+         ^~~~~~~~
+         "gpio.h"
+C:/Program Files/Program_Keil/Keil_v5/Library/NUC100Series/Include\NUC100Series.h(13609): warning: non-portable path to file '"i2c.h"'; specified path differs in case from file name on disk [-Wnonportable-include-path]
+#include "I2C.h"
+         ^~~~~~~
+         "i2c.h"
+C:/Program Files/Program_Keil/Keil_v5/Library/NUC100Series/Include\NUC100Series.h(13610): warning: non-portable path to file '"pwm.h"'; specified path differs in case from file name on disk [-Wnonportable-include-path]
+#include "PWM.h"
+         ^~~~~~~
+         "pwm.h"
+C:/Program Files/Program_Keil/Keil_v5/Library/NUC100Series/Include\NUC100Series.h(13611): warning: non-portable path to file '"spi.h"'; specified path differs in case from file name on disk [-Wnonportable-include-path]
+#include "SPI.h"
+         ^~~~~~~
+         "spi.h"
+C:/Program Files/Program_Keil/Keil_v5/Library/NUC100Series/Include\NUC100Series.h(13612): warning: non-portable path to file '"crc.h"'; specified path differs in case from file name on disk [-Wnonportable-include-path]
+#include "CRC.h"
+         ^~~~~~~
+         "crc.h"
+C:/Program Files/Program_Keil/Keil_v5/Library/NUC100Series/Include\NUC100Series.h(13613): warning: non-portable path to file '"timer.h"'; specified path differs in case from file name on disk [-Wnonportable-include-path]
+#include "TIMER.h"
+         ^~~~~~~~~
+         "timer.h"
+C:/Program Files/Program_Keil/Keil_v5/Library/NUC100Series/Include\NUC100Series.h(13614): warning: non-portable path to file '"wdt.h"'; specified path differs in case from file name on disk [-Wnonportable-include-path]
+#include "WDT.h"
+         ^~~~~~~
+         "wdt.h"
+C:/Program Files/Program_Keil/Keil_v5/Library/NUC100Series/Include\NUC100Series.h(13615): warning: non-portable path to file '"wwdt.h"'; specified path differs in case from file name on disk [-Wnonportable-include-path]
+#include "WWDT.h"
+         ^~~~~~~~
+         "wwdt.h"
+C:/Program Files/Program_Keil/Keil_v5/Library/NUC100Series/Include\NUC100Series.h(13616): warning: non-portable path to file '"rtc.h"'; specified path differs in case from file name on disk [-Wnonportable-include-path]
+#include "RTC.h"
+         ^~~~~~~
+         "rtc.h"
+C:/Program Files/Program_Keil/Keil_v5/Library/NUC100Series/Include\NUC100Series.h(13617): warning: non-portable path to file '"uart.h"'; specified path differs in case from file name on disk [-Wnonportable-include-path]
+#include "UART.h"
+         ^~~~~~~~
+         "uart.h"
+C:/Program Files/Program_Keil/Keil_v5/Library/NUC100Series/Include\NUC100Series.h(13618): warning: non-portable path to file '"i2s.h"'; specified path differs in case from file name on disk [-Wnonportable-include-path]
+#include "I2S.h"
+         ^~~~~~~
+         "i2s.h"
+C:/Program Files/Program_Keil/Keil_v5/Library/NUC100Series/Include\NUC100Series.h(13619): warning: non-portable path to file '"can.h"'; specified path differs in case from file name on disk [-Wnonportable-include-path]
+#include "CAN.h"
+         ^~~~~~~
+         "can.h"
+C:/Program Files/Program_Keil/Keil_v5/Library/NUC100Series/Include\NUC100Series.h(13620): warning: non-portable path to file '"usbd.h"'; specified path differs in case from file name on disk [-Wnonportable-include-path]
+#include "USBD.h"
+         ^~~~~~~~
+         "usbd.h"
+C:/Program Files/Program_Keil/Keil_v5/Library/StdDriver/Source/gpio.c(12): warning: In file included from...
+C:/Program Files/Program_Keil/Keil_v5/Library/NUC100Series/Include\NUC100Series.h(13620): warning: In file included from...
+C:/Program Files/Program_Keil/Keil_v5/Library/StdDriver/Include\USBD.h(638): warning: variable 'u32CfgAddr' may be uninitialized when used here [-Wconditional-uninitialized]
+    return ((*((__IO uint32_t *)(u32CfgAddr))) & USBD_CFGP_SSTALL);
+                                 ^~~~~~~~~~
+C:/Program Files/Program_Keil/Keil_v5/Library/StdDriver/Include\USBD.h(622): note: initialize the variable 'u32CfgAddr' to silence this warning
+    uint32_t u32CfgAddr;
+                       ^
+                        = 0
+C:/Program Files/Program_Keil/Keil_v5/Library/StdDriver/Source/gpio.c(12): warning: In file included from...
+C:/Program Files/Program_Keil/Keil_v5/Library/NUC100Series/Include\NUC100Series.h(13621): warning: non-portable path to file '"pdma.h"'; specified path differs in case from file name on disk [-Wnonportable-include-path]
+#include "PDMA.h"
+         ^~~~~~~~
+         "pdma.h"
+C:/Program Files/Program_Keil/Keil_v5/Library/NUC100Series/Include\NUC100Series.h(13622): warning: non-portable path to file '"sc.h"'; specified path differs in case from file name on disk [-Wnonportable-include-path]
+#include "SC.h"
+         ^~~~~~
+         "sc.h"
+C:/Program Files/Program_Keil/Keil_v5/Library/NUC100Series/Include\NUC100Series.h(13623): warning: non-portable path to file '"ps2.h"'; specified path differs in case from file name on disk [-Wnonportable-include-path]
+#include "PS2.h"
+         ^~~~~~~
+         "ps2.h"
+C:/Program Files/Program_Keil/Keil_v5/Library/NUC100Series/Include\NUC100Series.h(13624): warning: non-portable path to file '"clk.h"'; specified path differs in case from file name on disk [-Wnonportable-include-path]
+#include "CLK.h"
+         ^~~~~~~
+         "clk.h"
+C:/Program Files/Program_Keil/Keil_v5/Library/NUC100Series/Include\NUC100Series.h(13625): warning: non-portable path to file '"acmp.h"'; specified path differs in case from file name on disk [-Wnonportable-include-path]
+#include "ACMP.h"
+         ^~~~~~~~
+         "acmp.h"
+C:/Program Files/Program_Keil/Keil_v5/Library/StdDriver/Source/gpio.c(48): warning: implicit conversion changes signedness: 'int' to 'unsigned int' [-Wsign-conversion]
+            port->PMD = (port->PMD & ~(0x3 << (i << 1))) | (u32Mode << (i << 1));
+                                   ~ ^~~~~~~~~~~~~~~~~~
+29 warnings generated.
+compiling gpio.c...
 linking...
-.\Objects\Tut3.axf: Error: L6218E: Undefined symbol GPIO_SetMode (referred from main.o).
-Not enough information to list image symbols.
-Not enough information to list load addresses in the image map.
-Finished: 2 information, 0 warning and 1 error messages.
-".\Objects\Tut3.axf" - 1 Error(s), 75 Warning(s).
+Program Size: Code=812 RO-data=208 RW-data=0 ZI-data=1120  
+".\Objects\UART.axf" - 0 Error(s), 104 Warning(s).
 
 <h2>Software Packages used:</h2>
 
@@ -353,8 +476,7 @@ Package Vendor: Nuvoton
   C:\Program Files\Program_Keil\Keil_v5\Nuvoton\NuMicro_DFP\1.3.16\Device\NUC100\Include
 
 <h2>Collection of Component Files used:</h2>
-Target not created.
-Build Time Elapsed:  00:00:03
+Build Time Elapsed:  00:00:04
 </pre>
 </body>
 </html>

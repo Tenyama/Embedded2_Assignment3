@@ -398,6 +398,21 @@
               <FileType>1</FileType>
               <FilePath>.\main.c</FilePath>
             </File>
+            <File>
+              <FileName>gpio.c</FileName>
+              <FileType>1</FileType>
+              <FilePath>C:\Program Files\Program_Keil\Keil_v5\Library\StdDriver\Source\gpio.c</FilePath>
+            </File>
+            <File>
+              <FileName>clk.c</FileName>
+              <FileType>1</FileType>
+              <FilePath>C:\Program Files\Program_Keil\Keil_v5\Library\StdDriver\Source\clk.c</FilePath>
+            </File>
+            <File>
+              <FileName>spi.c</FileName>
+              <FileType>1</FileType>
+              <FilePath>C:\Program Files\Program_Keil\Keil_v5\Library\StdDriver\Source\spi.c</FilePath>
+            </File>
           </Files>
         </Group>
       </Groups>

@@ -1,5 +1,5 @@
-./objects/main.o: main.c \
-  C:\Program\ Files\Program_Keil\Keil_v5\ARM\ARMCLANG\Bin\..\include\stdio.h \
+./objects/adc.o: \
+  C:\Program\ Files\Program_Keil\Keil_v5\Library\StdDriver\Source\adc.c \
   C:\Program\ Files\Program_Keil\Keil_v5\Library\NUC100Series\Include\NUC100Series.h \
   C:\Program\ Files\Program_Keil\Keil_v5\Library\CMSIS\Include\core_cm0.h \
   C:\Program\ Files\Program_Keil\Keil_v5\ARM\ARMCLANG\Bin\..\include\stdint.h \
@@ -26,5 +26,4 @@
   C:\Program\ Files\Program_Keil\Keil_v5\Library\StdDriver\Include\SC.h \
   C:\Program\ Files\Program_Keil\Keil_v5\Library\StdDriver\Include\PS2.h \
   C:\Program\ Files\Program_Keil\Keil_v5\Library\StdDriver\Include\CLK.h \
-  C:\Program\ Files\Program_Keil\Keil_v5\Library\StdDriver\Include\ACMP.h \
-  LCD.h
+  C:\Program\ Files\Program_Keil\Keil_v5\Library\StdDriver\Include\ACMP.h
