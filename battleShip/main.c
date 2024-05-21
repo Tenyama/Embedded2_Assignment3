@@ -21,15 +21,15 @@ void SPI3_Config(void);
 
 void UART0_Config(void);
 char UART0_GetChar(void);
-void UART02_IRQHandler(void);
+void UART0_IRQHandler(void);
 void TMR0_IRQHandler(void);
 
 
 
-void LCD_start(void);
+void Initialize_LCD(void);
 void LCD_command(unsigned char temp);
-void LCD_data(unsigned char temp);
-void LCD_clear(void);
+void LCD_SendData(unsigned char temp);
+void Clear_LCD(void);
 void LCD_SetAddress(uint8_t PageAddr, uint8_t ColumnAddr);
 
 //Gloabl Array to display on 7segment for NUC140 MCU
@@ -74,7 +74,7 @@ volatile int view[8][8] = {
 	{0, 0, 0, 0, 0, 0, 0, 0}	
 };
 
-void printMap (void) {
+void DisplayMap (void) {
 	for (int row = 0; row < 8; row++) {
 		for (int col = 0; col < 8; col++) {
 			if (view[row][col] == 0) {
@@ -293,12 +293,12 @@ int main(void) {
 	SPI3_Config();
 
 	//LCD initialization
-	LCD_start();
-	LCD_clear();
+	Initialize_LCD();
+	Clear_LCD();
 
 	while (1) {
 		if (cleanLCD) {
-				LCD_clear();
+				Clear_LCD();
 				cleanLCD = 0;
 		}
 		
@@ -323,7 +323,7 @@ int main(void) {
 			// Start displaying 7seg
 			TIMER0->TCSR |= (0x01 << 30);
 		
-			printMap();
+			DisplayMap();
 			break;
 		case 3: // Game Over State
 			// Turn off Timer0
@@ -356,6 +356,8 @@ int main(void) {
 //-----------------------------------------------------------------------------------
 // Functions definition
 //-----------------------------------------------------------------------------------
+
+//Configures the system clock and power settings.
 void System_Config(void) {
 	// Enable 12MHz HXT, wait still stable
   CLK->PWRCON |= (1 << 0);
@@ -388,6 +390,9 @@ void System_Config(void) {
 	CLK->APBCLK |= (0x01 << 16); 	// Enable UART0 clock
 }
 
+
+
+//Configures the Timer0 settings including interrupts.
 void Clock_Config(void) {
 	// Timer0 Config with Interrupt--------
 	CLK->CLKSEL1 &= ~(0x07 << 8);
@@ -422,6 +427,8 @@ void Clock_Config(void) {
 	//-----End of Timer0 Config---------
 }
 
+
+//Configures GPIO pins for LEDs, buzzer, and interrupts.
 void GPIO_Config(void) {
     // GPIO Configuration starts-------------
 	// LED5-6 - GPC12-13
@@ -453,6 +460,8 @@ void GPIO_Config(void) {
 	// GPIO Configuration ends-------------
 }
 
+
+//Configures SPI3 settings for communication.
 void SPI3_Config(void) {
 	SYS->GPD_MFP |= 1 << 11; 		//1: PD11 is configured for alternative func-tion
 	SYS->GPD_MFP |= 1 << 9; 		//1: PD9 is configured for alternative function
@@ -473,6 +482,7 @@ void SPI3_Config(void) {
 	SPI3->DIVIDER = 0; // SPI clock divider. SPI clock = HCLK / ((DIVID-ER+1)*2). HCLK = 50 MHz
 }
 
+// Configures UART0 settings for serial communication.
 void UART0_Config(void) {
 	// UART0 pin configuration. PB.0 pin is for UART0 RX
 	PB->PMD &= ~(0x03 << 0);			// PB.0 is input pin
@@ -507,6 +517,8 @@ void UART0_Config(void) {
 	UART0->BAUD &= ~(0x03 << 28); // Mode 0
 }
 
+
+//Retrieves a character from UART0.
 char UART0_GetChar(void) {
 	while (1) {
 		if(!(UART0->FSR & (0x01 << 14))){
@@ -515,7 +527,9 @@ char UART0_GetChar(void) {
 	}
 }
 
-void UART02_IRQHandler(void) {
+
+//UART0 interrupt handler for receiving data.
+void UART0_IRQHandler(void) {
 	char input = UART0_GetChar();
 	
 	if (input == '0' || input == '1') {
@@ -601,7 +615,7 @@ void TMR0_IRQHandler(void) {
 	TIMER0->TISR |= (1 << 0);
 }
 
-void LCD_start(void) {
+void Initialize_LCD(void) {
 	LCD_command(0xE2); // Set system reset
 	LCD_command(0xA1); // Set Frame rate 100 fps
 	LCD_command(0xEB); // Set LCD bias ratio E8~EB for 6~9 (min~max)
@@ -619,7 +633,7 @@ void LCD_command(unsigned char temp) {
 	SPI3->SSR &= ~(1 << 0);
 }
 
-void LCD_data(unsigned char temp) {
+void LCD_SendData(unsigned char temp) {
 	SPI3->SSR |= 1 << 0;
 	SPI3->TX[0] = 0x0100 + temp;
 	SPI3->CNTRL |= 1 << 0;
@@ -627,11 +641,11 @@ void LCD_data(unsigned char temp) {
 	SPI3->SSR &= ~(1 << 0);
 }
 
-void LCD_clear(void) {
+void Clear_LCD(void) {
 	int16_t i;
 	LCD_SetAddress(0x0, 0x0);
 	for (i = 0; i < 132 * 8; i++) {
-		LCD_data(0x00);
+		LCD_SendData(0x00);
 	}
 }
 
